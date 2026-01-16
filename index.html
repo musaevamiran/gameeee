@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>AMIRAN GAME — Neon Cosmic</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap');
+
+body {
+    margin: 0;
+    background: radial-gradient(circle at center, #020024, #000000 75%);
+    font-family: 'Orbitron', sans-serif;
+    color: white;
+    text-align: center;
+    overflow: hidden;
+}
+
+h1 {
+    margin: 18px 0 6px;
+    font-size: 46px;
+    letter-spacing: 6px;
+    background: linear-gradient(90deg, #00fff7, #7f7bff, #ff00ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow:
+        0 0 15px rgba(0,255,255,0.6),
+        0 0 35px rgba(127,123,255,0.6),
+        0 0 60px rgba(255,0,255,0.4);
+}
+
+.subtitle {
+    font-size: 14px;
+    letter-spacing: 3px;
+    color: #9fdfff;
+    text-shadow: 0 0 12px #00ffff;
+    margin-bottom: 12px;
+}
+
+canvas {
+    background:
+        radial-gradient(circle at top, rgba(0,255,255,0.08), transparent 60%),
+        linear-gradient(to bottom, #030a2a, #000012);
+    border-radius: 26px;
+    box-shadow:
+        0 0 60px rgba(0,255,255,0.45),
+        0 0 120px rgba(127,123,255,0.25),
+        inset 0 0 80px rgba(0,0,0,0.9);
+    display: block;
+    margin: 0 auto 20px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>AMIRAN GAME</h1>
+<div class="subtitle">NEON COSMIC EXPERIENCE</div>
+
+<canvas id="game" width="460" height="700"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+/* 🌌 Космические частицы */
+const stars = Array.from({ length: 220 }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    r: Math.random() * 2,
+    s: Math.random() * 0.8 + 0.2
+}));
+
+let score = 0;
+let missed = 0;
+let maxRecord = localStorage.getItem("maxRecord") || 0;
+let gameOver = false;
+
+/* 🛸 Платформа */
+const player = {
+    x: 170, 
+    y: 640,
+    width: 120,
+    height: 24,
+    speed: 6
+};
+
+/* 🔮 Энергетический шар */
+let orb = {
+    x: Math.random() * 420,
+    y: -50,
+    size: 26,
+    speed: 3
+};
+
+let left = false;
+let right = false;
+
+document.addEventListener("keydown", e => {
+    if (e.key === "ArrowLeft") left = true;
+    if (e.key === "ArrowRight") right = true;
+});
+document.addEventListener("keyup", e => {
+    if (e.key === "ArrowLeft") left = false;
+    if (e.key === "ArrowRight") right = false;
+});
+
+/* 🌠 Фон */
+function drawStars() {
+    stars.forEach(s => {
+        ctx.fillStyle = "rgba(255,255,255,0.9)";
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+        s.y += s.s;
+        if (s.y > canvas.height) {
+            s.y = 0;
+            s.x = Math.random() * canvas.width;
+        }
+    });
+}
+
+/* 🛸 Платформа */
+function drawPlayer() {
+    const g = ctx.createLinearGradient(player.x, player.y, player.x + player.width, player.y);
+    g.addColorStop(0, "#00fff7");
+    g.addColorStop(0.5, "#7f7bff");
+    g.addColorStop(1, "#ff00ff");
+
+    ctx.shadowColor = "#00ffff";
+    ctx.shadowBlur = 30;
+
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.roundRect(player.x, player.y, player.width, player.height, 20);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+}
+
+/* 🔮 Шар */
+function drawOrb() {
+    const g = ctx.createRadialGradient(orb.x, orb.y, 4, orb.x, orb.y, orb.size);
+    g.addColorStop(0, "#ffffff");
+    g.addColorStop(0.4, "#00fff7");
+    g.addColorStop(1, "#7f7bff");
+
+    ctx.shadowColor = "#00fff7";
+    ctx.shadowBlur = 40;
+
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(orb.x, orb.y, orb.size / 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+}
+
+/* 🧠 HUD */
+function drawHUD() {
+    ctx.font = "14px Orbitron";
+    ctx.fillStyle = "#00fff7";
+    ctx.fillText("◉ SCORE", 18, 26);
+    ctx.fillText(score, 18, 44);
+
+    ctx.fillStyle = "#ff5cff";
+    ctx.fillText("◉ MAX RECORD", 18, 70);
+    ctx.fillText(maxRecord, 18, 88);
+
+    ctx.fillStyle = "#7f7bff";
+    ctx.fillText("◉ SPEED", 18, 114);
+    ctx.fillText(player.speed.toFixed(1), 18, 132);
+
+    ctx.fillStyle = "#ff4d4d";
+    ctx.fillText("◉ MISSED", 18, 158);
+    ctx.fillText(missed + "/5", 18, 176);
+}
+
+/* 💀 GAME OVER */
+function drawGameOver() {
+    ctx.fillStyle = "rgba(0,0,40,0.9)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.textAlign = "center";
+    ctx.font = "52px Orbitron";
+    ctx.fillStyle = "#ff2f92";
+    ctx.shadowColor = "#ff2f92";
+    ctx.shadowBlur = 30;
+    ctx.fillText("MISSION FAILED", canvas.width / 2, 340);
+
+    ctx.shadowBlur = 0;
+    ctx.font = "20px Orbitron";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText("YOUR SCORE: " + score, canvas.width / 2, 385);
+    ctx.fillText("MAX RECORD: " + maxRecord, canvas.width / 2, 415);
+    ctx.fillText("RESTARTING...", canvas.width / 2, 460);
+    ctx.textAlign = "left";
+}
+
+function resetGame() {
+    score = 0;
+    missed = 0;
+    player.speed = 6;
+    orb.speed = 3;
+    orb.y = -50;
+    gameOver = false;
+    requestAnimationFrame(update);
+}
+
+/* 🔄 GAME LOOP */
+function update() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    drawStars();
+
+    if (gameOver) {
+        drawGameOver();
+        return;
+    }
+
+    if (left && player.x > 0) player.x -= player.speed;
+    if (right && player.x < canvas.width - player.width) player.x += player.speed;
+
+    orb.y += orb.speed;
+
+    if (
+        orb.x > player.x &&
+        orb.x < player.x + player.width &&
+        orb.y > player.y &&
+        orb.y < player.y + player.height
+    ) {
+        score++;
+        if (score > maxRecord) {
+            maxRecord = score;
+            localStorage.setItem("maxRecord", maxRecord);
+        }
+        orb.y = -50;
+        orb.x = Math.random() * 420;
+        orb.speed += 0.3;
+        player.speed += 0.2;
+    }
+
+    if (orb.y > canvas.height) {
+        missed++;
+        orb.y = -50;
+        orb.x = Math.random() * 420;
+    }
+
+    if (missed >= 5) {
+        gameOver = true;
+        setTimeout(resetGame, 3200);
+    }
+
+    drawPlayer();
+    drawOrb();
+    drawHUD();
+
+    requestAnimationFrame(update);
+}
+
+update();
+</script>
+
+</body>
+</html>
