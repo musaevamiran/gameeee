@@ -95,7 +95,9 @@ let orb = {
 
 let left = false;
 let right = false;
+let touchX = null; // для сенсорного управления
 
+/* 🎹 Клавиатура */
 document.addEventListener("keydown", e => {
     if (e.key === "ArrowLeft") left = true;
     if (e.key === "ArrowRight") right = true;
@@ -103,6 +105,18 @@ document.addEventListener("keydown", e => {
 document.addEventListener("keyup", e => {
     if (e.key === "ArrowLeft") left = false;
     if (e.key === "ArrowRight") right = false;
+});
+
+/* 🖐 Сенсорное управление (drag пальцем) */
+canvas.addEventListener("touchstart", e => {
+    touchX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
+});
+canvas.addEventListener("touchmove", e => {
+    touchX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
+    e.preventDefault();
+}, { passive: false });
+canvas.addEventListener("touchend", e => {
+    touchX = null;
 });
 
 /* 🌠 Фон */
@@ -174,6 +188,9 @@ function drawHUD() {
     ctx.fillStyle = "#ff4d4d";
     ctx.fillText("◉ MISSED", 18, 158);
     ctx.fillText(missed + "/5", 18, 176);
+
+    ctx.fillStyle = "#9fdfff";
+    ctx.fillText("TILT TO MOVE", canvas.width - 150, 26); // подсказка
 }
 
 /* 💀 GAME OVER */
@@ -218,11 +235,21 @@ function update() {
         return;
     }
 
+    // 🎮 Клавиатура
     if (left && player.x > 0) player.x -= player.speed;
     if (right && player.x < canvas.width - player.width) player.x += player.speed;
 
+    // 🖐 Сенсорное управление (drag пальцем)
+    if (touchX !== null) {
+        player.x = touchX - player.width / 2;
+    }
+
+    // границы
+    player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+
     orb.y += orb.speed;
 
+    // столкновение
     if (
         orb.x > player.x &&
         orb.x < player.x + player.width &&
@@ -240,6 +267,7 @@ function update() {
         player.speed += 0.2;
     }
 
+    // промах
     if (orb.y > canvas.height) {
         missed++;
         orb.y = -50;
@@ -263,3 +291,4 @@ update();
 
 </body>
 </html>
+
